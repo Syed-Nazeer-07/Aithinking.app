@@ -1,60 +1,138 @@
-# AI Thinking - Production Ready
+AI Thinking
 
-A modern AI chat application with image support, powered by Google Gemini.
+AI Thinking is a robust, client-side chat application that bridges the gap between raw AI capabilities and structured human workflow. Powered by Google Gemini 2.5 Flash and Firebase, it offers a seamless interface for chatting with text, images, and documents.
 
-## Features
-- Text and image chat with AI
-- Dark/light theme toggle
-- Chat history with Firebase sync
-- Google authentication
-- Responsive design
-- Image enlargement modal
-- Code syntax highlighting
+Live Demo / Preview: Simply open index.html in your browser.
 
-## Files
-- `index_production.html` - Production-ready HTML file
-- `style.css` - Optimized CSS styles
-- `firestore.rules` - Secure Firestore rules
-- `api-gemini.js` - Backend API template
+✨ Key Features
 
-## Deployment
+Multimodal Capabilities:
 
-### 1. Security Setup
-```bash
-# Deploy Firestore rules
-firebase deploy --only firestore:rules
+Text: Natural language conversations with context awareness.
 
-# Set environment variables
-export GEMINI_API_KEY="your_gemini_api_key"
-```
+Images: Upload images for analysis (vision capabilities).
 
-### 2. Backend Setup
-- Implement `/api/gemini` endpoint using `api-gemini.js`
-- Update `API_URL` in HTML to use backend endpoint
-- Remove `API_KEY` from client code
+Documents: Analyze PDFs and text files directly in the chat.
 
-### 3. Production Optimizations
-- ✅ External CSS file
-- ✅ Deferred script loading
-- ✅ Lazy-loaded syntax highlighting
-- ✅ Error handling with auto-dismiss
-- ✅ Secure Firestore rules
-- ✅ Meta tags and favicon
-- ✅ Clean, comment-free code
+Code: Syntax highlighting for code blocks using highlight.js.
 
-## Environment Variables
-```
-GEMINI_API_KEY=your_google_gemini_api_key
-```
+Flexible Authentication:
 
-## Browser Support
-- Chrome/Edge 90+
-- Firefox 88+
-- Safari 14+
-- Mobile browsers
+Guest Mode: Start chatting immediately without login (chats saved to LocalStorage).
 
-## Performance
-- First paint: ~200ms
-- Interactive: ~500ms
-- Lazy-loaded dependencies
-- Optimized scrolling and animations
+Google Login: Sync chats across devices using Firebase Authentication.
+
+Modern UI/UX:
+
+Responsive Design: Fully optimized for mobile and desktop (Tailwind CSS).
+
+Dark/Light Mode: System-aware theme toggle with persistence.
+
+Markdown Support: Rich text rendering using marked.js.
+
+File Previews: Visual previews for uploaded images and file icons for documents.
+
+Smart History:
+
+Persistence: Chats are automatically saved to Firestore (for logged-in users) or LocalStorage (for guests).
+
+Data Optimization: Large file attachments are handled efficiently to respect storage limits.
+
+🛠️ Tech Stack
+
+Frontend Engine: HTML5, Vanilla JavaScript (ES Modules).
+
+Styling: Tailwind CSS (via CDN).
+
+AI Model: Google Gemini API (gemini-2.5-flash-preview-09-2025).
+
+Backend / BaaS:
+
+Firebase Auth (Google Sign-In).
+
+Firebase Firestore (Database).
+
+Firebase Analytics.
+
+Utilities:
+
+marked.js (Markdown parsing).
+
+highlight.js (Code syntax highlighting).
+
+🚀 Getting Started
+
+Since this is a client-side application using ES Modules and CDNs, no build step (like Webpack or Vite) is strictly required to run it locally.
+
+Prerequisites
+
+A modern web browser (Chrome, Firefox, Edge, Safari).
+
+A local web server (recommended due to CORS policies with ES modules).
+
+Installation & Setup
+
+Clone the repository
+
+git clone [https://github.com/yourusername/ai-thinking.git](https://github.com/yourusername/ai-thinking.git)
+cd ai-thinking
+
+
+Configuration
+Open index.html and locate the configuration sections to add your own keys.
+
+Step A: Gemini API
+Find the API_KEY constant and replace it with your key from Google AI Studio.
+
+const API_KEY = "YOUR_GEMINI_API_KEY_HERE";
+
+
+Step B: Firebase Config
+Find the firebaseConfig object and replace it with your project details from the Firebase Console.
+
+const firebaseConfig = {
+    apiKey: "YOUR_FIREBASE_API_KEY",
+    authDomain: "your-project.firebaseapp.com",
+    projectId: "your-project-id",
+    // ... other config values
+};
+
+
+Run Locally
+You cannot simply double-click index.html because of ES Module security restrictions (CORS). You must serve it.
+
+Using Python:
+
+python3 -m http.server 8000
+
+
+Using Node (http-server):
+
+npx http-server .
+
+
+Using VS Code:
+Install the "Live Server" extension and click "Go Live".
+
+Access the App
+Open your browser to http://localhost:8000 (or the port provided by your server).
+
+📖 Usage Guide
+
+Start a Chat: Type your query in the input box.
+
+Attach Files: Click the + icon to upload images, PDFs, or code files.
+
+Switch Modes: Use the Moon/Sun icon in the header to toggle Dark Mode.
+
+Manage History: Click the Sidebar icon (top left) to view or delete past conversations.
+
+Login: Click the "Login" button (if configured) to save your chats to the cloud.
+
+📄 License
+
+Distributed under the MIT License. See LICENSE for more information.
+
+📞 Contact
+
+Project Link:https://github.com/Syed-Nazeer-07/Aithinking.app
