@@ -1,0 +1,1538 @@
+<!-- MODIFICATION: Removed default class="dark" -->
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="description" content="AI Thinking - Chat with AI using text, images, and documents. Powered by Google Gemini.">      
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%236366f1'><path d='m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z'/></svg>">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="robots" content="index, follow">     <meta name="theme-color" content="#6366f1">     <meta name="apple-mobile-web-app-capable" content="yes">     <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <title>AI Thinking</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- NEW: Inline script to prevent theme flashing (FOUC) -->
+    <script>
+        (function() {
+            try {
+                const storedTheme = localStorage.getItem('theme');
+                const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                
+                if (storedTheme === 'dark' || (!storedTheme && systemPrefersDark)) {
+                    document.documentElement.classList.add('dark');
+                } else {
+                    document.documentElement.classList.remove('dark');
+                }
+            } catch (e) {
+                // Ignore errors
+            }
+        })();
+    </script>
+    <!-- END NEW SCRIPT -->
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    // You can add custom theme extensions here if needed
+                }
+            }
+        }
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js" defer></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="style.css">
+
+    <!-- MODIFICATION: Added loader styles -->
+    <style>
+        .message-bubble.instant {
+            opacity: 1;
+            transform: none;
+            animation: none;
+        }
+        /* User message wrapper */
+        .instant-wrapper {
+            opacity: 1;
+            transform: none;
+            animation: none;
+        }
+
+        /* AI "Thinking" Loader */
+        .loader-bubble {
+            background-color: #f3f4f6; /* bg-gray-100 */
+            border-color: #e5e7eb; /* border-gray-200 */
+            align-self: flex-start;
+            display: flex;
+            align-items: center;
+            padding: 0.75rem 1rem; /* p-3 */
+            max-width: 90%;
+            animation: fadeIn 0.3s ease-out forwards;
+        }
+
+        .dark .loader-bubble {
+            background-color: #1f2937; /* dark:bg-gray-800 */
+            border-color: #374151; /* dark:border-gray-700 */
+        }
+
+        /* Three dots animation */
+        .spinner {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 1.5rem; /* ~line-height */
+        }
+
+        .spinner div {
+            width: 8px;
+            height: 8px;
+            background-color: #4f46e5; /* indigo-600 */
+            border-radius: 50%;
+            margin: 0 3px;
+            animation: bounce 1.4s infinite ease-in-out both;
+        }
+
+        .dark .spinner div {
+            background-color: #818cf8; /* dark:indigo-400 */
+        }
+
+        .spinner .dot1 {
+            animation-delay: -0.32s;
+        }
+
+        .spinner .dot2 {
+            animation-delay: -0.16s;
+        }
+
+        @keyframes bounce {
+            0%, 80%, 100% {
+                transform: scale(0);
+            }
+            40% {
+                transform: scale(1.0);
+            }
+        }
+        
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* File Preview Styles */
+        .file-preview-card {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background-color: #f3f4f6;
+            border-radius: 0.5rem;
+            border: 1px solid #e5e7eb;
+            overflow: hidden;
+            width: 100%;
+            height: 100%;
+            padding: 0.5rem;
+            text-align: center;
+        }
+        .dark .file-preview-card {
+            background-color: #1f2937;
+            border-color: #374151;
+        }
+        .file-preview-icon {
+            color: #4f46e5;
+            margin-bottom: 0.25rem;
+        }
+        .dark .file-preview-icon {
+            color: #818cf8;
+        }
+        .file-preview-name {
+            font-size: 0.65rem;
+            line-height: 1.2;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            width: 100%;
+            word-break: break-all;
+        }
+
+        /* Mobile Sidebar Optimizations */
+        #sidebar {
+            transition: transform 0.3s ease-in-out;
+        }
+        @media (max-width: 768px) {
+            #sidebar {
+                position: absolute;
+                height: 100%;
+                z-index: 50;
+                transform: translateX(-100%);
+            }
+            #sidebar.open {
+                transform: translateX(0);
+            }
+        }
+        #sidebar-overlay {
+            position: fixed;
+            inset: 0;
+            background-color: rgba(0,0,0,0.5);
+            z-index: 40;
+            backdrop-filter: blur(2px);
+        }
+        
+        /* Smooth scrolling on mobile */
+        #chat-container {
+            -webkit-overflow-scrolling: touch;
+        }
+    </style>
+
+<body class="bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-200 flex items-center justify-center min-h-screen">
+
+    <!-- MODIFICATION: Changed h-screen to h-[100dvh] for better mobile browser support -->
+    <div class="flex h-screen w-full relative overflow-hidden supports-[height:100dvh]:h-[100dvh]">
+
+        <div id="sidebar-overlay" class="hidden md:hidden"></div>
+
+        <aside id="sidebar" class="w-64 bg-gray-100 dark:bg-gray-900 flex flex-col flex-shrink-0 border-r border-gray-200 dark:border-gray-700 md:relative">
+            <div class="p-4 border-b border-gray-200 dark:border-gray-700">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="font-semibold text-lg text-gray-800 dark:text-gray-200">Chats</h2> 
+                    <button id="sidebar-close-button" class="p-2 rounded-md text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                    </button>
+                </div>
+                <button id="new-chat-button" class="w-full bg-indigo-600 text-white rounded-lg p-2 font-semibold hover:bg-indigo-700 flex items-center justify-center gap-2 dark:bg-indigo-500 dark:hover:bg-indigo-600">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"></path></svg>
+                    New Chat
+                </button>
+            </div>
+            
+            <nav id="sidebar-nav" class="flex-1 overflow-y-auto p-2 space-y-1">
+                <ul id="chat-list" class="space-y-1">
+                    <!-- Chat items will be populated by JS -->
+                </ul>
+            </nav>
+        </aside>
+
+        <div class="flex flex-col flex-1 bg-white dark:bg-gray-950 overflow-hidden">
+            
+            <!-- Header -->
+            <header class="bg-gray-50 dark:bg-gray-900 p-3 md:p-4 border-b border-gray-200 dark:border-gray-700 shadow-md flex justify-between items-center">
+                
+                <button id="sidebar-toggle" class="p-2 rounded-md text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+                </button>
+
+                <!-- MODIFICATION: Removed the star SVG logo from the h1 -->
+                <h1 class="text-lg md:text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                    AI Thinking
+                </h1>
+                
+                <div class="flex items-center gap-2 md:gap-4">
+                    
+                    <div id="auth-container">
+                        <button id="google-login-button" class="hidden bg-indigo-600 text-white rounded-lg px-3 py-1.5 md:px-4 md:py-2 font-semibold hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-xs md:text-sm">
+                            Login
+                        </button>
+                        <div id="user-profile-container" class="hidden flex items-center gap-2">
+                            <div id="user-avatar-fallback" class="hidden w-8 h-8 rounded-full bg-indigo-500 flex items-center justify-center text-sm font-semibold text-white">
+                                <span id="user-avatar-initials"></span>
+                            </div>
+                            <span id="user-name" class="hidden md:inline text-sm font-medium text-gray-700 dark:text-gray-300"></span>
+                            <button id="logout-button" class="text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-indigo-500 dark:hover:text-indigo-400">
+                                <span class="hidden md:inline">Logout</span>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="md:hidden"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <button id="theme-toggle" class="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-300 dark:focus:ring-gray-600">
+                        <svg id="icon-sun" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="hidden"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+                        <svg id="icon-moon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="hidden"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+                    </button>
+                </div>
+            </header>
+            
+            <!-- Chat Container -->
+            <main id="chat-container" class="flex flex-col flex-1 overflow-y-auto p-3 md:p-6 space-y-4 bg-white dark:bg-gray-950">
+                <!-- Chat messages will be appended here -->
+            </main>
+            
+            <!-- MODIFICATION: Renamed to file-preview-container -->
+            <div id="file-preview-container" class="hidden p-3 md:p-4 pt-0 bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700">
+                <div id="file-preview-grid" class="flex flex-wrap gap-2">
+                    <!-- File previews will be populated by JS -->
+                </div>
+            </div>
+
+            <!-- Input Form -->
+            <!-- MODIFICATION: Added pb-[env(safe-area-inset-bottom)] for iOS home bar -->
+            <footer class="p-3 md:p-6 pb-[env(safe-area-inset-bottom)] bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700">
+                <!-- MODIFICATION: Updated ID to file-upload and expanded accept attribute -->
+                <input type="file" id="file-upload" class="hidden" accept="image/*,application/pdf,text/plain,text/markdown,text/javascript,text/x-python,text/html,text/css,application/json,text/csv,.py,.js,.jsx,.ts,.tsx,.md,.html,.css,.json,.csv,.txt" multiple>
+                
+                <form id="chat-form" class="flex items-end gap-2 md:gap-3">
+                    <button
+                        type="button"
+                        id="attach-button"
+                        class="bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 rounded-lg p-3 h-[48px] w-[48px] flex-shrink-0 flex items-center justify-center hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        title="Attach images, documents, or code"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
+                    </button>
+                    <!-- MODIFICATION: Added text-base to prevent zoom and fixed alignment -->
+                    <textarea
+                        id="user-input"
+                        rows="1"
+                        placeholder="Ask anything..."
+                        class="flex-1 bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-200 rounded-lg p-3 border border-gray-300 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none text-base"
+                        style="min-height: 48px; max-height: 150px; overflow-y: hidden;"
+                    ></textarea>
+                    <button
+                        id="send-button"
+                        type="submit"
+                        class="bg-indigo-600 text-white rounded-lg p-3 h-[48px] w-[48px] flex-shrink-0 flex items-center justify-center hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-indigo-500 dark:hover:bg-indigo-600"
+                    >
+                        <!-- Send Icon SVG -->
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                    </button>
+                </form>
+            </footer>
+        </div> 
+
+    </div> 
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-app.js";
+        import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-analytics.js";
+        import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDwMifrPCEWzulVyEFnNk5oAmIYyerWD64",
+            authDomain: "ai-thinking-62d70.firebaseapp.com",
+            projectId: "ai-thinking-62d70",
+            storageBucket: "ai-thinking-62d70.firebasestorage.app",
+            messagingSenderId: "63612573033",
+            appId: "1:63612573033:web:872a053ec1d9b6536b59f8",
+            measurementId: "G-V0RR90K9Q0"
+        };
+
+        // Firebase Init
+        let firebaseApp, firebaseAnalytics, firebaseAuth, googleProvider, db;
+        try {
+            firebaseApp = initializeApp(firebaseConfig);
+            firebaseAnalytics = getAnalytics(firebaseApp);
+            firebaseAuth = getAuth(firebaseApp);
+            googleProvider = new GoogleAuthProvider();
+            db = getFirestore(firebaseApp);
+        } catch (error) {
+            console.error('Firebase initialization failed:', error);
+        }
+
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
+        const chatContainer = document.getElementById('chat-container');
+        const chatForm = document.getElementById('chat-form');
+        const userInput = document.getElementById('user-input');
+        const sendButton = document.getElementById('send-button');
+        const themeToggle = document.getElementById('theme-toggle');
+        const iconSun = document.getElementById('icon-sun');
+        const iconMoon = document.getElementById('icon-moon');
+        const htmlEl = document.documentElement;
+        
+        const attachButton = document.getElementById('attach-button');
+        const fileUploadInput = document.getElementById('file-upload'); // Renamed
+        const filePreviewContainer = document.getElementById('file-preview-container'); // Renamed
+        const filePreviewGrid = document.getElementById('file-preview-grid'); // Renamed
+        
+        const sidebar = document.getElementById('sidebar');
+        const sidebarToggle = document.getElementById('sidebar-toggle');
+        const sidebarOverlay = document.getElementById('sidebar-overlay');
+        const newChatButton = document.getElementById('new-chat-button');
+        const chatList = document.getElementById('chat-list');
+        const sidebarCloseButton = document.getElementById('sidebar-close-button');
+
+        const authContainer = document.getElementById('auth-container');
+        const googleLoginButton = document.getElementById('google-login-button');
+        const userProfileContainer = document.getElementById('user-profile-container');
+        const logoutButton = document.getElementById('logout-button');
+        const userAvatarFallback = document.getElementById('user-avatar-fallback');
+        const userAvatarInitials = document.getElementById('user-avatar-initials');
+        const userName = document.getElementById('user-name');
+
+        const API_KEY = "AIzaSyBwCogTouN7BVcArZo7oTN4Qm-wfagI1LM";         const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${API_KEY}`;
+
+        let allChats = {};
+        let activeChatId = null;
+        let conversationHistory = []; 
+        let isLoading = false;
+        let loaderElement = null;
+        
+        // MODIFICATION: Use an array for multiple files (images, docs, code)
+        // Structure: { type: 'image'|'pdf'|'text', data: string (base64 or text), mimeType: string, name: string, previewUrl: string }
+        let attachedFiles = []; 
+        
+        let currentUser = null;
+        let userChatDocRef = null;
+        let chatSnapshotListener = null;
+        let isSending = false;
+        
+        chatForm.addEventListener('submit', handleSend);
+        
+        userInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSend(e);
+            }
+        });
+
+        userInput.addEventListener('input', () => {
+            // MODIFICATION: Improved auto-resize logic
+            userInput.style.height = 'auto'; // Reset height to shrink if needed
+            
+            const scrollHeight = userInput.scrollHeight;
+            const maxHeight = 150; // Reduced max height for mobile
+
+            if (scrollHeight > maxHeight) {
+                userInput.style.height = maxHeight + 'px';
+                userInput.style.overflowY = 'auto'; // Show scrollbar
+            } else {
+                userInput.style.height = scrollHeight + 'px';
+                userInput.style.overflowY = 'hidden'; // Hide scrollbar
+            }
+        });
+
+        themeToggle.addEventListener('click', () => {
+            const isDark = htmlEl.classList.toggle('dark');
+            localStorage.setItem('theme', isDark ? 'dark' : 'light');
+            updateThemeIcons(isDark);
+        });
+        
+        attachButton.addEventListener('click', () => {
+            fileUploadInput.click();
+        });
+        
+        fileUploadInput.addEventListener('change', handleFileUpload);
+        
+        newChatButton.addEventListener('click', () => createNewChat(true));
+        sidebarToggle.addEventListener('click', toggleSidebar);
+        sidebarOverlay.addEventListener('click', toggleSidebar);
+        sidebarCloseButton.addEventListener('click', toggleSidebar);
+
+        googleLoginButton.addEventListener('click', handleGoogleLogin);
+        logoutButton.addEventListener('click', handleLogout);
+
+
+        function startApp() {
+            // MODIFICATION: Only initialize icons here. The theme class is already set.
+            initializeThemeIcons();
+            initializeSidebar();
+            initializeAuth();
+        }
+
+        // MODIFICATION: Renamed and simplified. Now only handles icons.
+        function initializeThemeIcons() {
+            const isDark = document.documentElement.classList.contains('dark');
+            updateThemeIcons(isDark);
+        }
+
+        function initializeTheme() {
+            // This function is intentionally left blank or can be removed.
+            // The logic has been moved to the <head> and initializeThemeIcons().
+            // For safety, we'll just call the new icon function.
+            initializeThemeIcons();
+        }
+        
+        function initializeSidebar() {
+            const isMobile = window.innerWidth <= 768;
+            const sidebarHidden = localStorage.getItem('sidebarHidden') === 'true';
+            if (!isMobile && sidebarHidden) {
+                sidebar.classList.add('desktop-hidden');
+            }
+        }
+
+        function updateThemeIcons(isDark) {
+            if (isDark) {
+                iconMoon.classList.remove('hidden');
+                iconSun.classList.add('hidden');
+            } else {
+                iconMoon.classList.add('hidden');
+                iconSun.classList.remove('hidden');
+            }
+        }
+        
+        function toggleSidebar() {
+            const isMobile = window.innerWidth <= 768; 
+            if (isMobile) {
+                sidebar.classList.toggle('open');
+                sidebarOverlay.classList.toggle('hidden');
+            } else {
+                const isHidden = sidebar.classList.toggle('desktop-hidden');
+                localStorage.setItem('sidebarHidden', isHidden);
+            }
+        }
+
+        function initializeAuth() {
+            onAuthStateChanged(firebaseAuth, (user) => {
+                if (user) {
+                    currentUser = user;
+                    const userId = user.uid;
+                    userChatDocRef = doc(db, 'users', userId, 'chatdata', 'user_chats');
+                    
+                    updateUIForLoggedInUser(user);
+                    
+                    chatContainer.innerHTML = '<div class="p-4 text-center text-gray-500">Loading chats...</div>';
+                    chatList.innerHTML = '<li class="p-2 text-gray-500 dark:text-gray-400 text-sm">Loading...</li>';
+                    enableChatUI(false); 
+                    userInput.placeholder = "Loading...";
+
+                    attachChatListener();
+
+                } else {
+                    currentUser = null;
+                    if (chatSnapshotListener) {
+                        chatSnapshotListener();
+                        chatSnapshotListener = null;
+                    }
+                    userChatDocRef = null;
+                    updateUIForLoggedOutUser();
+                }
+            });
+        }
+
+        function updateUIForLoggedInUser(user) {
+            userProfileContainer.classList.remove('hidden');
+            googleLoginButton.classList.add('hidden');
+            
+            const displayName = user.displayName || 'User';
+            userName.textContent = displayName;
+            userAvatarInitials.textContent = displayName.charAt(0).toUpperCase();
+            userAvatarFallback.classList.remove('hidden');
+        }
+
+        function updateUIForLoggedOutUser() {
+            userProfileContainer.classList.add('hidden');
+            googleLoginButton.classList.remove('hidden');
+
+            allChats = {};
+            conversationHistory = [];
+            activeChatId = null;
+            
+            enableChatUI(true); 
+            loadChatsFromLocalStorage();
+        }
+        
+        function handleGoogleLogin() {
+            signInWithPopup(firebaseAuth, googleProvider)
+                .then((result) => {
+                    const user = result.user;
+                    console.log('Logged in as:', user.displayName);
+                }).catch((error) => {
+                    console.error("Authentication failed:", error.message);
+                    addMessageToUI(`Login Error: ${error.message}`, 'error');
+                });
+        }
+
+        function handleLogout() {
+            signOut(firebaseAuth)
+                .then(() => {
+                    console.log('User signed out.');
+                }).catch((error) => {
+                    console.error('Logout failed:', error.message);
+                });
+        }
+        
+        function enableChatUI(isEnabled) {
+            userInput.disabled = !isEnabled;
+            sendButton.disabled = !isEnabled;
+            attachButton.disabled = !isEnabled;
+            newChatButton.disabled = !isEnabled;
+            
+            if (isEnabled) {
+                userInput.placeholder = "Ask anything (add docs, images, code...)";
+            }
+        }
+        
+        async function loadChatsFromLocalStorage() {
+            try {
+                allChats = JSON.parse(localStorage.getItem('allChats')) || {};
+                activeChatId = localStorage.getItem('activeChatId') || null;
+            } catch (error) {
+                console.error("Failed to parse localStorage chats:", error);
+                allChats = {};
+                activeChatId = null;
+                localStorage.removeItem('allChats');
+                localStorage.removeItem('activeChatId');
+            }
+
+            let loadedChatId = activeChatId;
+
+            // MODIFICATION: Check if allChats is empty
+            if (Object.keys(allChats).length === 0) {
+                // No chats exist, show welcome screen
+                activeChatId = null;
+                conversationHistory = [];
+                renderChatList(); // Will show "No chats yet"
+                renderWelcomeScreen();
+                enableChatUI(true);
+                return;
+            }
+
+            // MODIFICATION: If activeChatId is invalid (or null), load the first existing chat
+            if (!loadedChatId || !allChats[loadedChatId]) {
+                loadedChatId = Object.keys(allChats).sort((a, b) => b.split('-')[1] - a.split('-')[1])[0];
+            }
+            
+            renderChatList(); 
+            await loadChat(loadedChatId);
+        }
+
+        function attachChatListener() {
+            if (!userChatDocRef) return;
+
+            if (chatSnapshotListener) chatSnapshotListener();
+
+            chatSnapshotListener = onSnapshot(userChatDocRef, async (docSnap) => {
+                if (isSending) return;
+
+                try {
+                    if (docSnap.exists()) {
+                        const data = docSnap.data();
+                        const remoteChats = data.allChats || {};
+                        
+                        // FIX: INTELLIGENT MERGE STRATEGY
+                        // We must preserve local base64 data if the remote data is "stripped"
+                        // because we strip heavy files before saving to Firestore to prevent 1MB limit.
+                        
+                        Object.keys(allChats).forEach(localChatId => {
+                            const localChat = allChats[localChatId];
+                            const remoteChat = remoteChats[localChatId];
+                            
+                            if (localChat && remoteChat) {
+                                // Walk through history and restore stripped data if we have it locally
+                                remoteChat.history.forEach((remoteMsg, rIndex) => {
+                                    const localMsg = localChat.history[rIndex];
+                                    if (localMsg && localMsg.role === remoteMsg.role) {
+                                        if (remoteMsg.parts && localMsg.parts) {
+                                            remoteMsg.parts.forEach((remotePart, pIndex) => {
+                                                const localPart = localMsg.parts[pIndex];
+                                                if (!localPart) return;
+
+                                                // If remote is stripped but local has data, restore it
+                                                if (remotePart.inlineData && remotePart.inlineData.data === "[File Data Removed for Storage]") {
+                                                    if (localPart.inlineData && localPart.inlineData.data && localPart.inlineData.data !== "[File Data Removed for Storage]") {
+                                                        remotePart.inlineData.data = localPart.inlineData.data;
+                                                    }
+                                                }
+                                            });
+                                        }
+                                    }
+                                });
+                            }
+                        });
+
+                        allChats = remoteChats;
+                        activeChatId = data.activeChatId || null;
+                    } else {
+                        allChats = {};
+                        activeChatId = null;
+                    }
+
+                    let loadedChatId = activeChatId;
+
+                    // MODIFICATION: Check if allChats is empty
+                    if (Object.keys(allChats).length === 0) {
+                        // No chats exist, show welcome screen
+                        activeChatId = null;
+                        conversationHistory = [];
+                        renderChatList(); // Will show "No chats yet"
+                        renderWelcomeScreen();
+                        enableChatUI(true);
+                        return; // Stop here
+                    }
+
+                    // MODIFICATION: If activeChatId is invalid (or null), load the first existing chat
+                    if (!loadedChatId || !allChats[loadedChatId]) {
+                        loadedChatId = Object.keys(allChats).sort((a, b) => b.split('-')[1] - a.split('-')[1])[0];
+                    }
+                    
+                    renderChatList(); 
+                    await loadChat(loadedChatId); 
+                    enableChatUI(true);
+
+                } catch (error) {
+                    console.error("Error processing chat snapshot:", error);
+                    // Don't show error UI excessively, just log
+                }
+
+            }, (error) => {
+                console.error("Error listening to chat data:", error);
+                addMessageToUI(`Error: Could not load chat data. ${error.message}.`, 'error');
+            });
+        }
+
+        async function saveChatsToStorage() {
+            if (currentUser && userChatDocRef) {
+                try {
+                    // FIX: STRIP HEAVY DATA BEFORE SAVING
+                    // Firestore has a 1MB limit per document. Base64 images easily exceed this.
+                    // We create a copy, strip the base64 string, and save that.
+                    
+                    const chatsToSave = JSON.parse(JSON.stringify(allChats));
+                    
+                    for (const chatId in chatsToSave) {
+                        const history = chatsToSave[chatId].history;
+                        history.forEach(msg => {
+                            if (msg.parts) {
+                                msg.parts.forEach(part => {
+                                    if (part.inlineData && part.inlineData.data) {
+                                        // If data is very large (likely an image/pdf), strip it
+                                        // Simple heuristic: if > 1000 chars, it's likely a file
+                                        if (part.inlineData.data.length > 1000) {
+                                            part.inlineData.data = "[File Data Removed for Storage]";
+                                        }
+                                    }
+                                });
+                            }
+                        });
+                    }
+
+                    await setDoc(userChatDocRef, { 
+                        allChats: chatsToSave, 
+                        activeChatId: activeChatId 
+                    });
+                } catch (error) {
+                    console.error("Error saving chats to Firestore:", error);
+                    addMessageToUI(`Warning: Failed to save chat history (Size limit?). ${error.message}`, 'error');
+                }
+            } else {
+                try {
+                    // LocalStorage can handle slightly more, but still good to be careful. 
+                    // For now, we save full data to localStorage so Guest mode works better with refresh.
+                    localStorage.setItem('allChats', JSON.stringify(allChats));
+                    localStorage.setItem('activeChatId', activeChatId);
+                } catch (error) {
+                    console.error("Error saving chats to localStorage:", error);
+                    addMessageToUI(`Error: Failed to save chat to local storage. ${error.message}`, 'error');
+                }
+                return Promise.resolve();
+            }
+        }
+
+        // MODIFICATION: This function now just resets the state to a new chat
+        async function createNewChat(load = true) {
+            activeChatId = null;
+            conversationHistory = [];
+            renderChatList(); // De-highlights all chats
+            renderWelcomeScreen();
+            
+            // Clear input fields
+            userInput.value = '';
+            userInput.style.height = '48px';
+            clearAllAttachedFiles(); // MODIFICATION: Call new clear all function
+
+            if (sidebar.classList.contains('open') && load) {
+                toggleSidebar();
+            }
+        }
+
+        // Helper for suggestion cards
+        window.handleSuggestionClick = function(text) {
+            const input = document.getElementById('user-input');
+            input.value = text;
+            input.focus();
+            input.style.height = 'auto';
+            input.style.height = (input.scrollHeight) + 'px';
+        };
+
+        // Function to render Welcome Screen
+        function renderWelcomeScreen() {
+            const guestMessage = !currentUser ? '<p class="text-xs text-amber-600 dark:text-amber-400 mt-4 bg-amber-50 dark:bg-amber-900/30 p-2 rounded-lg inline-block">Guest Mode: Chats saved locally</p>' : '';
+            
+            // MODIFICATION: Removed the logo DIV and added pt-12 to the h2
+            const html = `
+                <div id="welcome-screen" class="flex flex-col flex-1 items-center justify-center h-full w-full animate-in fade-in duration-500 p-4">
+                    <div class="bg-white dark:bg-gray-900 p-4 md:p-8 flex flex-col items-center text-center max-w-2xl w-full">
+                        
+                        <h2 class="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-2 pt-8 md:pt-12">How can I help you today?</h2>
+                        <p class="text-gray-500 dark:text-gray-400 mb-8">I'm here to assist you with questions, coding, creative tasks, and more.</p>
+                        
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full text-left">
+                            <button onclick="window.handleSuggestionClick('Analyze this attached report')" class="p-4 rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 hover:border-indigo-300 dark:hover:border-indigo-700 transition-all group">
+                                <h3 class="font-medium text-gray-900 dark:text-gray-200 mb-1 group-hover:text-indigo-600 dark:group-hover:text-indigo-400">Analyze Documents</h3>
+                                <p class="text-xs text-gray-500 dark:text-gray-400 line-clamp-2">Summarize and analyze attached PDF/Text files</p>
+                            </button>
+                            <button onclick="window.handleSuggestionClick('Explain the theory of relativity like I am 5')" class="p-4 rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 hover:border-indigo-300 dark:hover:border-indigo-700 transition-all group">
+                                <h3 class="font-medium text-gray-900 dark:text-gray-200 mb-1 group-hover:text-indigo-600 dark:group-hover:text-indigo-400">Explain a concept</h3>
+                                <p class="text-xs text-gray-500 dark:text-gray-400 line-clamp-2">Theory of relativity like I am 5</p>
+                            </button>
+                             <button onclick="window.handleSuggestionClick('Refactor this python script for efficiency')" class="p-4 rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 hover:border-indigo-300 dark:hover:border-indigo-700 transition-all group">
+                                <h3 class="font-medium text-gray-900 dark:text-gray-200 mb-1 group-hover:text-indigo-600 dark:group-hover:text-indigo-400">Review Code</h3>
+                                <p class="text-xs text-gray-500 dark:text-gray-400 line-clamp-2">Attach code files for review and refactoring</p>
+                            </button>
+                             <button onclick="window.handleSuggestionClick('Draft a professional email asking for a raise')" class="p-4 rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 hover:border-indigo-300 dark:hover:border-indigo-700 transition-all group">
+                                <h3 class="font-medium text-gray-900 dark:text-gray-200 mb-1 group-hover:text-indigo-600 dark:group-hover:text-indigo-400">Draft an email</h3>
+                                <p class="text-xs text-gray-500 dark:text-gray-400 line-clamp-2">Professional email asking for a raise</p>
+                            </button>
+                        </div>
+                        ${guestMessage}
+                    </div>
+                </div>
+            `;
+            chatContainer.innerHTML = html;
+        }
+
+        async function loadChat(chatId) {
+            if (!chatId || !allChats[chatId]) {
+                console.warn(`Chat ${chatId} not found, cannot load.`);
+                // MODIFICATION: Show welcome screen if no chats
+                if (Object.keys(allChats).length === 0) {
+                    renderChatList();
+                    renderWelcomeScreen(); 
+                }
+                return;
+            }
+
+            activeChatId = chatId;
+            const chat = allChats[chatId];
+            conversationHistory = chat.history;
+
+            chatContainer.innerHTML = ''; // Clear container
+            
+            if (conversationHistory.length === 0) {
+                renderWelcomeScreen();
+            } else {
+                const fragment = document.createDocumentFragment();
+                
+                for (const message of conversationHistory) {
+                    const role = message.role;
+                    const textPart = message.parts.find(p => p.text);
+                    const dataParts = message.parts.filter(p => p.inlineData);
+
+                    const text = textPart ? textPart.text : "";
+                    
+                    // Reconstruct file attachments from inlineData
+                    // NOTE: We only display images/PDFs that were stored as inlineData. 
+                    // Text files are merged into prompt, so they don't appear as attachments in history,
+                    // but their content is part of the 'text' variable (usually).
+                    const attachments = dataParts.map(part => {
+                        return {
+                            mimeType: part.inlineData.mimeType,
+                            data: part.inlineData.data,
+                            // Use a generic name if missing, or try to infer type
+                            type: part.inlineData.mimeType.startsWith('image/') ? 'image' : 'pdf',
+                            name: 'Attachment' // Fallback name since we don't store exact filenames in parts structure usually
+                        };
+                    });
+                    
+                    const messageEl = createMessageElement(text, role, attachments, true);
+                    if (messageEl) {
+                        fragment.appendChild(messageEl);
+                    }
+                }
+                
+                chatContainer.appendChild(fragment);
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            }
+            
+            // CRITICAL FIX: Removed await saveChatsToStorage(); 
+            // This stops the infinite loop of Load -> Save -> Update -> Load
+            // We now only save when user explicitly changes something.
+
+            // NEW: Manually update active classes to prevent flicker
+            const chatListItems = chatList.querySelectorAll('li[data-chat-id]');
+            chatListItems.forEach(item => {
+                if (item.dataset.chatId === activeChatId) {
+                    item.classList.add('bg-gray-200', 'dark:bg-gray-800', 'text-gray-900', 'dark:text-white');
+                    item.classList.remove('text-gray-700', 'dark:text-gray-300', 'hover:bg-gray-200', 'dark:hover:bg-gray-800');
+                } else {
+                    item.classList.remove('bg-gray-200', 'dark:bg-gray-800', 'text-gray-900', 'dark:text-white');
+                    item.classList.add('text-gray-700', 'dark:text-gray-300', 'hover:bg-gray-200', 'dark:hover:bg-gray-800');
+                }
+            });
+
+
+            if (sidebar.classList.contains('open')) {
+                toggleSidebar();
+            }
+        }
+
+        async function deleteChat(chatId) {
+            // MODIFICATION: Fix for deleting the last chat
+            if (Object.keys(allChats).length <= 1) {
+                if (allChats[chatId]) {
+                    allChats[chatId].history = [];
+                    allChats[chatId].title = "New Chat"; 
+                    await saveChatsToStorage();
+                }
+                
+                if (activeChatId === chatId) {
+                    await loadChat(chatId); 
+                    // FIX: Ensure we save here since loadChat no longer saves
+                    await saveChatsToStorage();
+                } else {
+                    renderChatList();
+                }
+                return;
+            }
+            
+            delete allChats[chatId];
+
+            if (activeChatId === chatId) {
+                const newActiveId = Object.keys(allChats).sort((a, b) => b.split('-')[1] - a.split('-')[1])[0];
+                activeChatId = newActiveId; 
+                await loadChat(newActiveId); 
+                // FIX: Ensure we save here since loadChat no longer saves
+                await saveChatsToStorage();
+            } else {
+                await saveChatsToStorage();
+                renderChatList();
+            }
+        }
+
+        function renderChatList() {
+            chatList.innerHTML = ''; 
+            
+            if (!currentUser) {
+                 chatList.innerHTML = '<li class="p-2 text-gray-500 dark:text-gray-400 text-sm">Guest Mode</li>';
+            }
+
+            const chatIds = Object.keys(allChats);
+            if (chatIds.length === 0) {
+                chatList.innerHTML += '<li class="p-2 text-gray-500 dark:text-gray-400 text-sm">No chats yet.</li>';
+                return;
+            }
+
+            chatIds.sort((a, b) => b.split('-')[1] - a.split('-')[1]);
+
+            for (const chatId of chatIds) {
+                const chat = allChats[chatId];
+                if (!chat) continue;
+                
+                const li = document.createElement('li');
+                li.className = `group flex items-center justify-between p-2 rounded-md cursor-pointer text-sm font-medium`;
+                li.dataset.chatId = chat.id; 
+                
+                if (chat.id === activeChatId) {
+                    li.classList.add('bg-gray-200', 'dark:bg-gray-800', 'text-gray-900', 'dark:text-white');
+                } else {
+                    li.classList.add('text-gray-700', 'dark:text-gray-300', 'hover:bg-gray-200', 'dark:hover:bg-gray-800');
+                }
+                
+                const titleSpan = document.createElement('span');
+                titleSpan.textContent = chat.title || "New Chat";
+                titleSpan.className = "truncate flex-1";
+                li.addEventListener('click', async (e) => {
+                    if (e.target === li || e.target === titleSpan) {
+                        await loadChat(chat.id);
+                        // FIX: Explicitly save when user clicks a different chat
+                        await saveChatsToStorage();
+                    }
+                });
+                li.appendChild(titleSpan);
+
+                const deleteButton = document.createElement('button');
+                deleteButton.className = "ml-2 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0";
+                deleteButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/><path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/></svg>`;
+                deleteButton.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    deleteChat(chat.id);
+                });
+                
+                li.appendChild(deleteButton);
+                chatList.appendChild(li);
+            }
+        }
+        
+        // MODIFICATION: Rewritten to handle ANY file type
+        function handleFileUpload(e) {
+            const files = e.target.files;
+            if (!files || files.length === 0) return;
+
+            const filePromises = [];
+
+            for (const file of files) {
+                if (file.size > 10 * 1024 * 1024) { // Increased to 10MB
+                    addMessageToUI(`Error: File ${file.name} is too large (max 10MB).`, 'error');
+                    continue;
+                }
+
+                filePromises.push(new Promise((resolve, reject) => {
+                    // Check if it's an image or PDF (Binary/Base64)
+                    if (file.type.startsWith('image/') || file.type === 'application/pdf') {
+                        const reader = new FileReader();
+                        reader.onload = (event) => {
+                            const base64String = event.target.result;
+                            resolve({
+                                type: file.type.startsWith('image/') ? 'image' : 'pdf',
+                                mimeType: file.type,
+                                data: base64String.split(',')[1], // Actual Base64 data
+                                previewUrl: base64String, // Data URL for preview
+                                name: file.name
+                            });
+                        };
+                        reader.onerror = (error) => reject(error);
+                        reader.readAsDataURL(file);
+                    } 
+                    // Assume it's a text/code file
+                    else {
+                        const reader = new FileReader();
+                        reader.onload = (event) => {
+                            resolve({
+                                type: 'text',
+                                mimeType: file.type || 'text/plain',
+                                data: event.target.result, // Raw text content
+                                name: file.name
+                            });
+                        };
+                        reader.onerror = (error) => reject(error);
+                        reader.readAsText(file);
+                    }
+                }));
+            }
+
+            Promise.all(filePromises)
+                .then(newFiles => {
+                    attachedFiles.push(...newFiles);
+                    renderFilePreviews();
+                })
+                .catch(error => {
+                    console.error('Error processing files:', error);
+                    addMessageToUI('Error: Failed to read one or more files.', 'error');
+                });
+
+            fileUploadInput.value = null;
+        }
+
+        // NEW: Function to render the preview files in the grid
+        function renderFilePreviews() {
+            filePreviewGrid.innerHTML = ''; 
+
+            if (attachedFiles.length === 0) {
+                filePreviewContainer.classList.add('hidden');
+                return;
+            }
+
+            attachedFiles.forEach((file, index) => {
+                const previewWrapper = document.createElement('div');
+                previewWrapper.className = 'relative inline-block w-24 h-24';
+                
+                if (file.type === 'image') {
+                    const img = document.createElement('img');
+                    img.src = file.previewUrl;
+                    img.className = 'w-full h-full object-cover rounded-md border border-gray-300 dark:border-gray-600';
+                    previewWrapper.appendChild(img);
+                } else {
+                    // Render Icon for PDF/Text/Code
+                    const card = document.createElement('div');
+                    card.className = 'file-preview-card';
+                    
+                    const icon = document.createElement('div');
+                    icon.className = 'file-preview-icon';
+                    
+                    // Simple icon logic
+                    let svgIcon = '';
+                    if (file.type === 'pdf') {
+                        svgIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 16 16"><path d="M14 14V4.5L9.5 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2zM9.5 3A1.5 1.5 0 0 0 11 4.5h2V14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h5.5v2z"/><path d="M4.603 14.087a.81.81 0 0 1-.438-.42c-.195-.388-.13-.776.08-1.102.198-.307.526-.568.897-.787a7.68 7.68 0 0 1 1.482-.645 19.697 19.697 0 0 0 1.062-2.227 7.269 7.269 0 0 1-.43-1.295c-.086-.4-.119-.796-.046-1.136.075-.354.274-.672.65-.823.192-.077.4-.12.602-.077a.7.7 0 0 1 .477.365c.088.164.12.356.127.538.007.188-.012.396-.047.614-.084.51-.27 1.134-.52 1.794a10.954 10.954 0 0 0 .98 1.686 5.753 5.753 0 0 1 1.334.05c.364.066.734.195.96.465.12.144.193.32.2.518.007.192-.047.382-.138.563a1.04 1.04 0 0 1-.354.416.856.856 0 0 1-.51.138c-.331-.014-.654-.196-.933-.417a5.712 5.712 0 0 1-.911-.95 11.651 11.651 0 0 0-1.997.406 11.307 11.307 0 0 1-1.02 1.51c-.292.35-.609.656-.927.787a.793.793 0 0 1-.58.029zm1.379-1.901c-.166.076-.32.156-.459.238-.328.194-.541.383-.647.545-.094.145-.096.25-.04.361.01.022.02.036.026.044a.266.266 0 0 0 .035-.012c.137-.056.355-.235.635-.572a8.18 8.18 0 0 0 .45-.606zm1.64-1.33a12.71 12.71 0 0 1 1.01-.193 11.744 11.744 0 0 1-.51-.858 20.801 20.801 0 0 1-.5 1.05zm2.446.45c.15.163.296.3.435.41.24.19.407.253.498.256a.107.107 0 0 0 .07-.015.307.307 0 0 0 .094-.125.436.436 0 0 0 .059-.2.095.095 0 0 0-.026-.063c-.052-.062-.2-.152-.518-.209a3.876 3.876 0 0 0-.612-.053zM8.097 12.095c-.018-.023-.027-.052-.026-.078a.226.226 0 0 1 .015-.078c.045-.11.103-.23.167-.348.065-.118.14-.234.215-.345.076-.11.155-.213.232-.303.078-.09.15-.176.216-.254a12.8 12.8 0 0 1-.72 1.406z"/></svg>`;
+                    } else {
+                        // Generic Text/Code icon
+                        svgIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 16 16"><path d="M14 4.5V14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h5.5L14 4.5zm-3 0A1.5 1.5 0 0 1 9.5 3V1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V4.5h-2z"/></svg>`;
+                    }
+                    icon.innerHTML = svgIcon;
+                    
+                    const name = document.createElement('span');
+                    name.className = 'file-preview-name';
+                    name.textContent = file.name;
+                    
+                    card.appendChild(icon);
+                    card.appendChild(name);
+                    previewWrapper.appendChild(card);
+                }
+                
+                const removeButton = document.createElement('button');
+                removeButton.className = 'absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-0 w-6 h-6 flex items-center justify-center text-lg font-bold leading-none z-10';
+                removeButton.innerHTML = '&times;';
+                removeButton.dataset.index = index;
+                
+                removeButton.addEventListener('click', () => {
+                    removeAttachedFile(index);
+                });
+                
+                previewWrapper.appendChild(removeButton);
+                filePreviewGrid.appendChild(previewWrapper);
+            });
+
+            filePreviewContainer.classList.remove('hidden');
+        }
+
+        function removeAttachedFile(index) {
+            attachedFiles.splice(index, 1);
+            renderFilePreviews(); 
+        }
+
+        // MODIFICATION: Renamed function
+        function clearAllAttachedFiles() {
+            attachedFiles = [];
+            renderFilePreviews(); 
+        }
+
+        async function handleSend(e) {
+            e.preventDefault();
+            const prompt = userInput.value.trim();
+            
+            // MODIFICATION: Check new array length
+            if ((!prompt && attachedFiles.length === 0) || isLoading) return;
+
+            // MODIFICATION: Check if this is a new (unsaved) chat
+            if (activeChatId === null) {
+                // This is the first message. Create the chat now.
+                const newId = `chat-${Date.now()}`;
+                const newTitle = prompt.length > 30 ? prompt.substring(0, 27) + '...' : (prompt || "Attached File Chat");
+                
+                allChats[newId] = { id: newId, title: newTitle, history: [] };
+                activeChatId = newId;
+                conversationHistory = allChats[newId].history; 
+                
+                renderChatList(); 
+            }
+            else if (allChats[activeChatId] && allChats[activeChatId].title === "New Chat" && prompt) {
+                // This is an existing chat titled "New Chat", rename it
+                allChats[activeChatId].title = prompt.length > 30 ? prompt.substring(0, 27) + '...' : prompt;
+                renderChatList(); 
+            }
+            
+            // PREPARE DATA FOR UI AND SENDING
+            
+            // 1. Separate Text Files from Media Files
+            const textFiles = attachedFiles.filter(f => f.type === 'text');
+            const mediaFiles = attachedFiles.filter(f => f.type !== 'text'); // Images and PDFs
+
+            // 2. Prepare visual attachments for the UI (just the objects)
+            const attachmentsForUI = attachedFiles.map(f => ({
+                type: f.type,
+                name: f.name,
+                data: f.type === 'image' ? f.previewUrl : null // Only need data for image previews in bubbles
+            }));
+            
+            isSending = true; 
+
+            // 3. Add Message to UI
+            addMessageToUI(prompt, 'user', attachmentsForUI, true); 
+            
+            // 4. Construct the prompt for Gemini
+            // We append text file contents to the user prompt.
+            let finalPrompt = prompt;
+            if (textFiles.length > 0) {
+                finalPrompt += "\n\n--- Attached Documents ---";
+                for (const file of textFiles) {
+                    finalPrompt += `\n\nFile: ${file.name}\n\`\`\`\n${file.data}\n\`\`\``;
+                }
+            }
+
+            // 5. Clear state
+            clearAllAttachedFiles(); 
+            userInput.value = '';
+            userInput.style.height = '48px';
+            userInput.style.overflowY = 'hidden';
+            
+            setLoading(true);
+            
+            try {
+                const userParts = [];
+                if (finalPrompt) {
+                    userParts.push({ text: finalPrompt });
+                }
+                
+                // 6. Add Media Files (Images/PDFs) as inlineData
+                if (mediaFiles.length > 0) {
+                    for (const file of mediaFiles) {
+                        userParts.push({ 
+                            inlineData: {
+                                mimeType: file.mimeType,
+                                data: file.data // Base64
+                            }
+                        });
+                    }
+                }
+                
+                conversationHistory.push({ role: "user", parts: userParts });
+                
+                const responseText = await callGeminiAPIWithRetry();
+                
+                setLoading(false);
+
+                conversationHistory.push({ role: "model", parts: [{ text: responseText }] });
+                
+                await addMessageToUI(responseText, 'model'); 
+
+                await saveChatsToStorage(); 
+
+            } catch (error) {
+                console.error('Error fetching from Gemini:', error);
+                addMessageToUI(`Error: ${error.message}`, 'error');
+                setLoading(false);
+            } finally {
+                isSending = false;
+            }
+        }
+
+        async function callGeminiAPIWithRetry(maxRetries = 3, delay = 1000) {
+            let attempt = 0;
+            while (attempt < maxRetries) {
+                try {
+                    const payload = {
+                        // MODIFICATION: Read history from the correct (potentially new) activeChatId
+                        contents: allChats[activeChatId].history,
+                    };
+
+                    const response = await fetch(API_URL, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(payload),
+                    });
+
+                    if (!response.ok) {
+                        if (response.status === 429) {
+                            throw new Error('Rate limit exceeded. Retrying...');
+                        }
+                        const contentType = response.headers.get('content-type');
+                        if (contentType && contentType.includes('application/json')) {
+                            const errorData = await response.json();
+                            throw new Error(`API Error: ${errorData.error?.message || `${response.status} ${response.statusText}`}`);
+                        } else {
+                            throw new Error(`Server Error: ${response.status} ${response.statusText}. Please ensure /api/gemini endpoint exists.`);
+                        }
+                    }
+
+                    const result = await response.json();
+
+                    if (result.error) {
+                        throw new Error(result.error.message);
+                    }
+
+                    const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+                    
+                    if (!text) {
+                        console.warn("Model returned no text response.");
+                        return "Received. I have analyzed the attachment.";
+                    }
+                    
+                    return text; 
+
+                } catch (error) {
+                    console.warn(`Attempt ${attempt + 1} failed: ${error.message}`);
+                    attempt++;
+                    if (attempt >= maxRetries) {
+                        throw error; 
+                    }
+                    await new Promise(resolve => setTimeout(resolve, delay * Math.pow(2, attempt)));
+                }
+            }
+        }
+
+        // MODIFICATION: Function to create a message element (accepts multiple attachments)
+        function createMessageElement(text, role, attachments = [], instant = false) {
+            if (role === 'user') {
+                const wrapperDiv = document.createElement('div');
+                wrapperDiv.style.display = 'flex';
+                wrapperDiv.style.flexDirection = 'column';
+                wrapperDiv.style.alignItems = 'flex-end'; 
+                wrapperDiv.style.gap = '0.5rem'; 
+                wrapperDiv.style.alignSelf = 'flex-end'; 
+                
+                // MODIFICATION: Add 'instant-wrapper' class or set animation props
+                if (instant) {
+                    wrapperDiv.classList.add('instant-wrapper');
+                } else {
+                    wrapperDiv.style.opacity = '0';
+                    wrapperDiv.style.transform = 'translateY(20px)';
+                    wrapperDiv.style.animation = 'fadeIn 0.3s ease-out forwards';
+                }
+                wrapperDiv.style.maxWidth = '90%'; 
+
+                // MODIFICATION: Loop through attachments
+                if (attachments && attachments.length > 0) {
+                    const grid = document.createElement('div');
+                    grid.className = 'grid gap-2';
+                    // Adjust grid columns
+                    if (attachments.length > 1) grid.className += ` grid-cols-2`;
+                    
+                    for (const att of attachments) {
+                        if (att.type === 'image') {
+                            const img = document.createElement('img');
+                            // Handle case where data might be missing (stripped from DB)
+                            if (att.data === "[File Data Removed for Storage]") {
+                                 // Render a placeholder if data is stripped
+                                const placeholder = document.createElement('div');
+                                placeholder.className = 'w-32 h-32 max-w-full rounded-[0.75rem] message-bubble flex items-center justify-center bg-gray-200 dark:bg-gray-700 text-xs text-center p-2';
+                                placeholder.textContent = "Image not loaded from history";
+                                grid.appendChild(placeholder);
+                            } else {
+                                img.src = att.data; // Ensure data is a valid src (base64)
+                                img.className = 'w-32 h-32 max-w-full object-cover rounded-[0.75rem] message-bubble cursor-pointer';
+                                if (instant) img.classList.add('instant');
+                                img.style.padding = '0'; 
+                                
+                                img.addEventListener('click', () => {
+                                    const modal = document.createElement('div');
+                                    modal.className = 'image-modal';
+                                    const enlargedImg = document.createElement('img');
+                                    enlargedImg.src = att.data;
+                                    modal.appendChild(enlargedImg);
+                                    modal.addEventListener('click', () => modal.remove());
+                                    document.body.appendChild(modal);
+                                });
+                                grid.appendChild(img);
+                            }
+                        } else {
+                            // Render Document Icon Bubble
+                            const docBubble = document.createElement('div');
+                            docBubble.className = 'message-bubble user-message flex items-center gap-2 p-3 text-sm';
+                            if (instant) docBubble.classList.add('instant');
+                            docBubble.style.backgroundColor = '#4f46e5'; 
+                            
+                            // Simple File Icon
+                            docBubble.innerHTML = `
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M14 4.5V14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h5.5L14 4.5zm-3 0A1.5 1.5 0 0 1 9.5 3V1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V4.5h-2z"/></svg>
+                                <span class="truncate max-w-[150px]">${att.name || 'Document'}</span>
+                            `;
+                            grid.appendChild(docBubble);
+                        }
+                    }
+                    grid.style.alignSelf = 'flex-end';
+                    wrapperDiv.appendChild(grid);
+                }
+
+                if (text) {
+                    const textBubble = document.createElement('div');
+                    textBubble.classList.add('message-bubble', 'user-message');
+                    // MODIFICATION: Add 'instant' class to text bubble
+                    if (instant) {
+                        textBubble.classList.add('instant');
+                    }
+                    textBubble.textContent = text;
+                    wrapperDiv.appendChild(textBubble);
+                }
+                
+                return wrapperDiv; 
+                
+            } else if (role === 'model') {
+                const messageDiv = document.createElement('div');
+                messageDiv.classList.add('message-bubble');
+                messageDiv.classList.add('model-message');
+
+                if (instant) {
+                    messageDiv.classList.add('instant');
+                }
+                
+                const proseDiv = document.createElement('div');
+                proseDiv.className = "prose prose-light-fix max-w-none";
+                
+                proseDiv.innerHTML = marked.parse(text);
+
+                const codeBlocks = proseDiv.querySelectorAll('pre code');
+                if (codeBlocks.length > 0) {
+                    if (typeof hljs === 'undefined') {
+                        const script = document.createElement('script');
+                        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js';
+                        script.onload = () => {
+                            codeBlocks.forEach(block => hljs.highlightElement(block));
+                        };
+                        document.head.appendChild(script);
+                    } else {
+                        codeBlocks.forEach(block => hljs.highlightElement(block));
+                    }
+                }
+                
+                addCopyButtons(proseDiv); 
+                
+                messageDiv.appendChild(proseDiv);
+                return messageDiv; 
+                
+            } else if (role === 'error') {
+                const messageDiv = document.createElement('div');
+                messageDiv.classList.add('message-bubble');
+                messageDiv.classList.add('error-message');
+                if (instant) {
+                    messageDiv.classList.add('instant');
+                }
+                messageDiv.textContent = text;
+                
+                setTimeout(() => {
+                    if (messageDiv.parentNode) {
+                        messageDiv.remove();
+                    }
+                }, 3000);
+                
+                return messageDiv; 
+            }
+            
+            return null; 
+        }
+
+        // MODIFICATION: Refactored to use createMessageElement (accepts multiple attachments)
+        function addMessageToUI(text, role, attachments = [], instant = false) {
+            // Remove welcome screen if present
+            const welcomeScreen = document.getElementById('welcome-screen');
+            if (welcomeScreen) {
+                welcomeScreen.remove();
+            }
+
+            const messageEl = createMessageElement(text, role, attachments, instant);
+            if (messageEl) {
+                chatContainer.appendChild(messageEl);
+            }
+
+            // Only auto-scroll if it's not an instant-load (i.e., it's a new message)
+            // or if it's an error message.
+            if (!instant || role === 'error') {
+                // MODIFICATION: Only scroll to bottom for user messages and errors
+                if (role === 'user' || role === 'error') {
+                    scrollToBottom(); // User messages and errors should still scroll to bottom
+                }
+            }
+            
+            // Special handling for new model messages (to scroll if user is already at bottom)
+            if (role === 'model' && !instant) {
+                const isScrolledNearBottom = chatContainer.scrollHeight - chatContainer.clientHeight <= chatContainer.scrollTop + 100; 
+                if (isScrolledNearBottom) {
+                    // MODIFICATION: Scroll to the START of the new message, not the bottom
+                    scrollToElement(messageEl);
+                }
+            }
+
+            // Return a promise for compatibility with handleSend
+            return Promise.resolve();
+        }
+
+        // MODIFICATION: Updated setLoading to use three-dot animation
+        function setLoading(state) {
+            isLoading = state;
+            sendButton.disabled = state;
+            userInput.disabled = state;
+            attachButton.disabled = state;
+
+            if (state) {
+                // Show loader
+                if (loaderElement) return; 
+                
+                loaderElement = document.createElement('div');
+                loaderElement.classList.add('message-bubble', 'loader-bubble');
+                
+                const spinner = document.createElement('div');
+                spinner.classList.add('spinner');
+                
+                // NEW: Create dots for the animation
+                const dot1 = document.createElement('div');
+                dot1.classList.add('dot1');
+                const dot2 = document.createElement('div');
+                dot2.classList.add('dot2');
+                const dot3 = document.createElement('div');
+                
+                spinner.appendChild(dot1);
+                spinner.appendChild(dot2);
+                spinner.appendChild(dot3);
+                // END NEW
+                
+                loaderElement.appendChild(spinner);
+                chatContainer.appendChild(loaderElement);
+                scrollToBottom();
+                
+            } else {
+                // Hide loader
+                if (loaderElement) {
+                    loaderElement.remove();
+                    loaderElement = null;
+                }
+            }
+        } 
+        
+        function scrollToBottom() {
+            // MODIFICATION: Use requestAnimationFrame to ensure DOM is updated.
+            // This allows the DOM to update and render the new messages,
+            // ensuring scrollHeight is correct and eliminating the flicker.
+            requestAnimationFrame(() => {
+                if (chatContainer) { // Add a check just in case
+                    chatContainer.scrollTop = chatContainer.scrollHeight;
+                }
+            });
+        }
+
+        // NEW: Function to scroll to the top of a specific element
+        function scrollToElement(element) {
+            requestAnimationFrame(() => {
+                if (chatContainer && element) {
+                    // Scroll to the top of the newly added element
+                    // We subtract a small offset (16px) so it's not flush against the top.
+                    const offset = 16; 
+                    chatContainer.scrollTop = element.offsetTop - offset;
+                }
+            });
+        }
+
+        function addCopyButtons(container) {
+            container.querySelectorAll('pre').forEach(preBlock => {
+                const codeBlock = preBlock.querySelector('code');
+                if (!codeBlock) return;
+
+                const copyButton = document.createElement('button');
+                copyButton.className = 'copy-button';
+                
+                const copyIcon = `
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline-block mr-1">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                    </svg>Copy`;
+                copyButton.innerHTML = copyIcon;
+
+                copyButton.addEventListener('click', () => {
+                    const codeToCopy = codeBlock.innerText;
+                    
+                    try {
+                        if (navigator.clipboard && window.isSecureContext) {
+                            navigator.clipboard.writeText(codeToCopy);
+                        } else {
+                            const textArea = document.createElement('textarea');
+                            textArea.value = codeToCopy;
+                            textArea.style.position = 'absolute';
+                            textArea.style.left = '-9999px';
+                            document.body.appendChild(textArea);
+                            textArea.select();
+                            document.execCommand('copy');
+                            document.body.removeChild(textArea);
+                        }
+
+                        copyButton.textContent = 'Copied!';
+                        setTimeout(() => {
+                            copyButton.innerHTML = copyIcon;
+                        }, 2000);
+                    } catch (err) {
+                        console.error('Failed to copy text: ', err);
+                        copyButton.textContent = 'Error';
+                         setTimeout(() => {
+                            copyButton.innerHTML = copyIcon;
+                        }, 2000);
+                    }
+                });
+
+                preBlock.appendChild(copyButton);
+            });
+        }
+        
+        startApp();
+        
+    </script>
+</body>
+</html>
